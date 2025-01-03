@@ -25,6 +25,18 @@ resource "google_container_cluster" "gke_cluster" {
   initial_node_count       = 1
 
   cluster_ipv4_cidr = "10.111.0.0/16"
+
+  addons_config {
+    gce_persistent_disk_csi_driver_config {
+        enabled = false
+    }
+  }
+
+  monitoring_config {
+    managed_prometheus {
+      enabled = false
+    }
+  }
 }
 
 resource "google_container_node_pool" "gke_nodes" {

@@ -41,6 +41,8 @@ resource "aws_eks_cluster" "example" {
   version  = "1.31"
 
   vpc_config {
+    endpoint_private_access = true
+    endpoint_public_access  = true
     subnet_ids = [
       data.aws_subnet.subnet_az1.id,
       data.aws_subnet.subnet_az2.id,

@@ -93,3 +93,23 @@ resource "google_compute_route" "this" {
 
   next_hop_vpn_tunnel = google_compute_vpn_tunnel.gke_tunnel_1.id
 }
+
+
+resource "google_compute_router" "router" {
+  name    = "my-router"
+  region  = "us-central1"
+  network = google_compute_network.gke_vpc.id
+}
+
+resource "google_compute_router_nat" "nat" {
+  name                               = "my-router-nat"
+  router                             = google_compute_router.router.name
+  region                             = google_compute_router.router.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
+}

@@ -20,7 +20,6 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy_attachment" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-# TODO: Add Role to mange Service-LoadBalancer
 resource "aws_iam_role" "eks_worker_role" {
   name = "EKS-${var.name}-WorkerNodeRole"
 

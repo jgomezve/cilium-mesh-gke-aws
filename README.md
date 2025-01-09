@@ -24,16 +24,16 @@ Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected ov
 
 * Get Kubeconfig from EKS
 
-        aws eks update-kubeconfig --region us-east-1 --name eks-cilium --set hostNetwork=true --set replicaCount=1
-
-* Install AWS Load Balancer Controller
-
-        helm repo add eks https://aws.github.io/eks-charts
-        helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-cilium
+        aws eks update-kubeconfig --region us-east-1 --name eks-cilium 
 
 * Install Cilium on EKS
 
         cilium install   --datapath-mode tunnel   --set cluster.id=1   --set cluster.name=eks-cilium   --set eni.enabled=false   --set tunnel=vxlan --set ipam.mode=cluster-pool   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.222.0.0/16   --set ipam.operator.clusterPoolIPv4MaskSize=24
+
+* Install AWS Load Balancer Controller
+
+        helm repo add eks https://aws.github.io/eks-charts
+        helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-cilium --set hostNetwork=true --set replicaCount=1
 
 * Get Kubeconfig from GKE
 

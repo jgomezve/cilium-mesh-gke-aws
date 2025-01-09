@@ -17,9 +17,9 @@ variable "enable_dns_hostnames" {
 variable "private_subnets" {
   description = "List of VPC's private subnets"
   type = list(object({
-    cidr   = string
-    az     = string
-    nat_gw = optional(bool, true)
+    cidr        = string
+    az          = string
+    eks_enabled = optional(bool, true)
   }))
 }
 

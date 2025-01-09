@@ -41,12 +41,13 @@ module "eks_cluster" {
 | <a name="input_public_endpoint"></a> [public\_endpoint](#input\_public\_endpoint) | EKS API public flag | `bool` | `true` | no |
 | <a name="input_eks_vpc_id"></a> [eks\_vpc\_id](#input\_eks\_vpc\_id) | ID of VPC for the EKS cluster | `string` | n/a | yes |
 | <a name="input_eks_cluster_subnets_ids"></a> [eks\_cluster\_subnets\_ids](#input\_eks\_cluster\_subnets\_ids) | List of subnet ids for the EKS cluster. Subnets must be in different AZ | `list(string)` | n/a | yes |
+| <a name="input_eks_ec2_cluster_subnets_ids"></a> [eks\_ec2\_cluster\_subnets\_ids](#input\_eks\_ec2\_cluster\_subnets\_ids) | List of subnet ids for the EC2 cluster. Option used to save costs | `list(string)` | `[]` | no |
 | <a name="input_eks_addons"></a> [eks\_addons](#input\_eks\_addons) | List of Addons to install on EKS | `list(string)` | <pre>[<br>  "vpc-cni",<br>  "kube-proxy",<br>  "coredns"<br>]</pre> | no |
 | <a name="input_minimum_nodes"></a> [minimum\_nodes](#input\_minimum\_nodes) | Minimum number of nodes in cluster | `number` | `1` | no |
 | <a name="input_maximum_nodes"></a> [maximum\_nodes](#input\_maximum\_nodes) | Maximum number of nodes in cluster | `number` | `1` | no |
 | <a name="input_desired_nodes"></a> [desired\_nodes](#input\_desired\_nodes) | Desired number of nodes in cluster | `number` | `1` | no |
 | <a name="input_ssh_keys_name"></a> [ssh\_keys\_name](#input\_ssh\_keys\_name) | Name of SSH keas for the worker nodes | `string` | n/a | yes |
-| <a name="input_instance_types"></a> [instance\_types](#input\_instance\_types) | List of desired EC2 instance types for the worker nodes | `list(string)` | <pre>[<br>  "t2.medium"<br>]</pre> | no |
+| <a name="input_instance_types"></a> [instance\_types](#input\_instance\_types) | List of desired EC2 instance types for the worker nodes | `list(string)` | <pre>[<br>  "t3.medium"<br>]</pre> | no |
 | <a name="input_ami_type"></a> [ami\_type](#input\_ami\_type) | AMI Type for the worker nodes | `string` | `"AL2_x86_64"` | no |
 | <a name="input_roles_with_access"></a> [roles\_with\_access](#input\_roles\_with\_access) | List of IAM ARN that can access the cluster | `list(string)` | n/a | yes |
 | <a name="input_load_balancer_ctrl_requirements"></a> [load\_balancer\_ctrl\_requirements](#input\_load\_balancer\_ctrl\_requirements) | Flag to create infra required by the AWS Load Balancer Controller | `bool` | `true` | no |

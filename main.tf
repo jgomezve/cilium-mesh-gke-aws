@@ -29,9 +29,9 @@ module "eks_vpc" {
       az   = "us-east-1a"
     },
     {
-      cidr = "192.168.2.0/24"
-      az   = "us-east-1b"
-      #nat_gw = false
+      cidr        = "192.168.2.0/24"
+      az          = "us-east-1b"
+      eks_enabled = false
     }
   ]
 }
@@ -84,13 +84,14 @@ module "gcp_vm_tshoot" {
 }
 
 module "eks_cluster" {
-  count                   = var.eks_cluster && var.aws_network ? 1 : 0
-  source                  = "./modules/eks_cluster"
-  name                    = "eks-cilium"
-  ssh_keys_name           = "my-demo-key"
-  eks_vpc_id              = module.eks_vpc[0].vpc_id
-  eks_cluster_subnets_ids = module.eks_vpc[0].private_subnets_id
-  roles_with_access       = ["arn:aws:iam::640168443445:user/aws-cli"] # Role use by aks-cli. So I can access the cluster using kubectl
+  count                       = var.eks_cluster && var.aws_network ? 1 : 0
+  source                      = "./modules/eks_cluster"
+  name                        = "eks-cilium"
+  ssh_keys_name               = "my-demo-key"
+  eks_vpc_id                  = module.eks_vpc[0].vpc_id
+  eks_ec2_cluster_subnets_ids = module.eks_vpc[0].private_subnets_id_eks_enabled
+  eks_cluster_subnets_ids     = module.eks_vpc[0].private_subnets_id
+  roles_with_access           = ["arn:aws:iam::640168443445:user/aws-cli"] # Role use by aks-cli. So I can access the cluster using kubectl
   # eks_addons              = ["kube-proxy", "vpc-cni"]
 }
 
@@ -102,5 +103,5 @@ module "gke_cluster" {
   gke_vpc_name  = module.gke_vpc[0].vpc_name
   gke_vpc_id    = module.gke_vpc[0].vpc_id
   gke_subnet_id = module.gke_vpc[0].private_subnets_id[0] # GKE uses the first defined subnet
-  location      = "us-central1-a"                         # Zonal clusterå
+  location      = "us-central1-a"                         # Zonal cluster
 }

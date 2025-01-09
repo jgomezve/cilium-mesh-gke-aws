@@ -101,7 +101,7 @@ resource "aws_eks_node_group" "node_group" {
   cluster_name    = aws_eks_cluster.cluster.id
   node_group_name = "${var.name}-nodes"
   node_role_arn   = aws_iam_role.eks_worker_role.arn
-  subnet_ids      = var.eks_cluster_subnets_ids
+  subnet_ids      = var.eks_ec2_cluster_subnets_ids != [] ? var.eks_ec2_cluster_subnets_ids : var.eks_cluster_subnets_ids
 
   scaling_config {
     desired_size = var.desired_nodes

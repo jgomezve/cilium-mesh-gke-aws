@@ -39,6 +39,12 @@ variable "eks_cluster_subnets_ids" {
   type        = list(string)
 }
 
+variable "eks_ec2_cluster_subnets_ids" {
+  description = "List of subnet ids for the EC2 cluster. Option used to save costs"
+  type        = list(string)
+  default     = []
+}
+
 variable "eks_addons" {
   description = "List of Addons to install on EKS"
   type        = list(string)
@@ -71,7 +77,7 @@ variable "ssh_keys_name" {
 variable "instance_types" {
   description = "List of desired EC2 instance types for the worker nodes"
   type        = list(string)
-  default     = ["t2.medium"]
+  default     = ["t3.medium"]
 }
 
 variable "ami_type" {

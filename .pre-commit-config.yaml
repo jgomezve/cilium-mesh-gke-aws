@@ -1,0 +1,23 @@
+---
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.62.3
+    hooks:
+      - id: terraform_fmt
+        args:
+          - --args=-recursive
+      # - id: terraform_tflint
+
+  - repo: https://github.com/terraform-docs/terraform-docs
+    rev: v0.18.0
+    hooks:
+      - id: terraform-docs-system
+        args: ["./modules/aws_network"]
+      - id: terraform-docs-system
+        args: ["./modules/aws_gcp_vpn"]
+      - id: terraform-docs-system
+        args: ["./modules/eks_cluster"]
+      - id: terraform-docs-system
+        args: ["./modules/gcp_network"]
+      - id: terraform-docs-system
+        args: ["./modules/gke_cluster"]

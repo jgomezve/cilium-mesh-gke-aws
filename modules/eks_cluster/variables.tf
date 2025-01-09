@@ -5,26 +5,27 @@ variable "name" {
 
 variable "authentication_mode" {
   description = "EKS Authentication mode"
-  default     = "API"
   type        = string
+  default     = "API"
 }
 
 variable "eks_version" {
   description = "EKS Version"
-  default     = "1.31"
   type        = string
+  default     = "1.31"
 }
 
 variable "private_endpoint" {
   description = "EKS API private flag"
-  default     = true
   type        = bool
+  default     = true
 }
 
 variable "public_endpoint" {
   description = "EKS API public flag"
-  default     = true
   type        = bool
+  default     = true
+
 }
 
 variable "eks_vpc_id" {
@@ -40,8 +41,8 @@ variable "eks_cluster_subnets_ids" {
 
 variable "eks_addons" {
   description = "List of Addons to install on EKS"
-  default     = ["vpc-cni", "kube-proxy", "coredns"]
   type        = list(string)
+  default     = ["vpc-cni", "kube-proxy", "coredns"]
 }
 
 variable "minimum_nodes" {
@@ -52,14 +53,14 @@ variable "minimum_nodes" {
 
 variable "maximum_nodes" {
   description = "Maximum number of nodes in cluster"
-  default     = 1
   type        = number
+  default     = 1
 }
 
 variable "desired_nodes" {
   description = "Desired number of nodes in cluster"
-  default     = 1
   type        = number
+  default     = 1
 }
 
 variable "ssh_keys_name" {
@@ -69,12 +70,13 @@ variable "ssh_keys_name" {
 
 variable "instance_types" {
   description = "List of desired EC2 instance types for the worker nodes"
-  default     = ["t2.medium"]
   type        = list(string)
+  default     = ["t2.medium"]
 }
 
 variable "ami_type" {
   description = "AMI Type for the worker nodes"
+  type        = string
   default     = "AL2_x86_64"
 }
 
@@ -82,5 +84,10 @@ variable "ami_type" {
 variable "roles_with_access" {
   description = "List of IAM ARN that can access the cluster"
   type        = list(string)
+}
 
+variable "load_balancer_ctrl_requirements" {
+  description = "Flag to create infra required by the AWS Load Balancer Controller"
+  type        = bool
+  default     = true
 }

@@ -1,7 +1,7 @@
 
 resource "google_compute_firewall" "default_rules" {
   name    = "default-rules"
-  network = google_compute_network.gke_vpc.name
+  network = var.vpc_name
 
   allow {
     protocol = "icmp"
@@ -12,18 +12,13 @@ resource "google_compute_firewall" "default_rules" {
     ports    = ["22"]
   }
 
-  allow {
-    protocol = "tcp"
-    ports    = ["80", "8080", "1000-2000"]
-  }
-
   source_ranges = ["0.0.0.0/0"]
 }
 
 resource "google_compute_instance" "default" {
-  name         = "test-vm"
-  machine_type = "e2-micro"
-  zone         = "us-central1-a"
+  name         = var.name
+  machine_type = var.vm_type
+  zone         = var.zone
 
   boot_disk {
     initialize_params {
@@ -31,8 +26,8 @@ resource "google_compute_instance" "default" {
     }
   }
   network_interface {
-    network    = google_compute_network.gke_vpc.id
-    subnetwork = google_compute_subnetwork.gke_nodes_subnet.id
+    network    = var.vpc_id
+    subnetwork = var.subnet_id
   }
 
   lifecycle {

@@ -5,6 +5,12 @@ variable "name" {
 
 variable "location" {
   description = "GKE location. Either a region or a zone"
+  type        = string
+}
+
+variable "gke_vpc_name" {
+  description = "Name of VPC for the GKE cluster"
+  type        = string
 }
 
 variable "gke_vpc_id" {
@@ -24,24 +30,25 @@ variable "pod_cidr" {
 
 variable "nodes_type" {
   description = "Type of VM for worker nodes"
+  type        = string
   default     = "e2-small"
 }
 
 variable "minimum_nodes" {
   description = "Minimum number of nodes in cluster"
-  default     = 1
   type        = number
+  default     = 1
 }
 
 variable "maximum_nodes" {
   description = "Maximum number of nodes in cluster"
-  default     = 1
   type        = number
+  default     = 1
 }
 
 
 variable "private_cluser" {
   description = "Flag to have enable/disable external IPs on workers"
-  default     = true
   type        = bool
+  default     = true
 }

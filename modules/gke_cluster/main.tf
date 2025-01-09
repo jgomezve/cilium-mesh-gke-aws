@@ -1,4 +1,21 @@
-#TODO: FW rules on the vpc?
+resource "google_compute_firewall" "default_rules" {
+  name     = "inter-cluster-rule"
+  network  = var.gke_vpc_name
+  priority = 10
+
+  allow {
+    protocol = "icmp"
+  }
+
+  allow {
+    protocol = "tcp"
+  }
+
+  allow {
+    protocol = "udp"
+  }
+  source_ranges = ["0.0.0.0/0"]
+}
 
 resource "google_container_cluster" "cluster" {
   name                     = var.name
@@ -35,7 +52,7 @@ resource "google_container_node_pool" "node_group" {
   }
 
   autoscaling {
-    min_node_count = var.maximum_nodes
+    min_node_count = var.minimum_nodes
     max_node_count = var.maximum_nodes
   }
 

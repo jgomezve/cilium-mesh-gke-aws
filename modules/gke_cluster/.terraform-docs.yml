@@ -1,0 +1,31 @@
+version: '>= 0.14.0'
+
+formatter: markdown table
+
+content: |-
+  # Terraform GKE Cluster
+
+  Creates a GKE Cluster and Node Groups
+
+  ## Examples
+
+  ```hcl
+  {{ include "./examples/main.tf" }}
+  ```
+
+  {{ .Requirements }}
+
+  {{ .Providers }}
+
+  {{ .Inputs }}
+
+  {{ .Outputs }}
+
+  {{ .Resources }}
+
+output:
+  file: README.md
+  mode: replace
+
+sort:
+  enabled: false

@@ -109,48 +109,60 @@ resource "aws_eks_node_group" "node_group" {
     min_size     = var.minimum_nodes
   }
 
-  #   launch_template {
-  #     id = aws_launch_template.aws_launch_template.id
-  #     version = aws_launch_template.aws_launch_template.latest_version
-  #   }
-
-  remote_access {
-    ec2_ssh_key = var.ssh_keys_name
-    #source_security_group_ids = [data.aws_security_group.selected.id] # CHECK NOT WORKING
+  launch_template {
+    id      = aws_launch_template.aws_launch_template.id
+    version = aws_launch_template.aws_launch_template.latest_version
   }
 
-  instance_types = var.instance_types
-  ami_type       = var.ami_type
+  taint {
+    key    = "node.cilium.io/agent-not-ready"
+    value  = "true"
+    effect = "NO_EXECUTE"
+  }
+
+  # remote_access {
+  #   ec2_ssh_key = var.ssh_keys_name
+  # }
+
+  # instance_types = var.instance_types
+  # ami_type       = var.ami_type
 }
 
 
 resource "aws_launch_template" "aws_launch_template" {
   name                   = "eks-node-launch-template"
   update_default_version = true
-  instance_type          = "t2.medium"
-  vpc_security_group_ids = [aws_security_group.worker_security_group.id]
+  instance_type          = "t3.medium"
+  vpc_security_group_ids = [aws_security_group.worker_security_group.id, aws_eks_cluster.cluster.vpc_config[0].cluster_security_group_id]
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+
+    ebs {
+      volume_size = 20
+      volume_type = "gp2"
+    }
+  }
+
+  key_name = var.ssh_keys_name
 
 }
-
 
 resource "aws_security_group" "worker_security_group" {
   name        = "EKS-${var.name}-worker_security_group"
   description = "Allow SSH, HTTP, and ICMP inbound traffic"
   vpc_id      = var.eks_vpc_id
 
-  dynamic "ingress" {
-    for_each = [22, 80, 443]
-    content {
-      from_port   = ingress.value
-      to_port     = ingress.value
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
+  ingress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port   = 8472
-    to_port     = 8472
+    from_port   = 0
+    to_port     = 65535
     protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -168,4 +180,10 @@ resource "aws_security_group" "worker_security_group" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  # tags = {
+  #   "kubernetes.io/cluster/${var.name}" = "owned" # Required by the AWS Load Balancer Controller
+  #   "aws:eks:cluster-name"              = var.name
+  #   "Name"                              = "eks-cluster-sq-worker_security_group"
+  # }
 }

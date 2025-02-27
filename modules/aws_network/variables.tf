@@ -26,8 +26,9 @@ variable "private_subnets" {
 variable "public_subnets" {
   description = "List of VPC's public subnets"
   type = list(object({
-    cidr = string
-    az   = string
+    cidr        = string
+    az          = string
+    eks_enabled = optional(bool, true)
   }))
 }
 

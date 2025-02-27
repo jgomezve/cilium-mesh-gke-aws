@@ -26,9 +26,14 @@ Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected ov
 
         aws eks update-kubeconfig --region us-east-1 --name eks-cilium 
 
+
+* Delete Kube-Proxy DaemonSet (Kube-Proxy replacement is required for Cilium GW API)
+
+
+
 * Install Cilium on EKS
 
-        cilium install   --datapath-mode tunnel   --set cluster.id=1   --set cluster.name=eks-cilium   --set eni.enabled=false   --set tunnel=vxlan --set ipam.mode=cluster-pool   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.222.0.0/16   --set ipam.operator.clusterPoolIPv4MaskSize=24
+        cilium install   --set gatewayAPI.enabled=true --set kubeProxyReplacement=true --datapath-mode vxlan   --set cluster.id=1   --set cluster.name=eks-cilium   --set eni.enabled=false   --set encapsulation.enabled=true  --set encapsulation.type=vxlan --set ipam.mode=cluster-pool   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.222.0.0/16   --set ipam.operator.clusterPoolIPv4MaskSize=24
 
 * Install AWS Load Balancer Controller
 
@@ -42,7 +47,7 @@ Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected ov
 
 * Install Cilium on GKE
 
-        cilium install   --datapath-mode tunnel   --set cluster.id=2   --set cluster.name=gke-cilium   --set eni.enabled=false   --set tunnel=vxlan --set ipam.mode=cluster-pool   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.111.0.0/16   --set ipam.operator.clusterPoolIPv4MaskSize=24
+        cilium install  --datapath-mode vxlan --set encapsulation.enabled=true  --set encapsulation.type=vxlan --set cluster.id=2   --set cluster.name=gke-cilium   --set eni.enabled=false  --set ipam.mode=cluster-pool   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.111.0.0/16   --set ipam.operator.clusterPoolIPv4MaskSize=24
 
 * Enable Cluster Mesh
 
@@ -52,3 +57,10 @@ Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected ov
 * Connect clusters
 
         cilium clustermesh connect --context eks --destination-context gke
+
+
+# Troubleshoot Cluster-Mesh
+
+
+# TearDown
+

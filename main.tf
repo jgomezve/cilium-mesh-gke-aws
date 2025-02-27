@@ -19,8 +19,9 @@ module "eks_vpc" {
       az   = "us-east-1a"
     },
     {
-      cidr = "192.168.92.0/24"
-      az   = "us-east-1b"
+      cidr        = "192.168.92.0/24"
+      az          = "us-east-1b"
+      eks_enabled = false
     }
   ]
   private_subnets = [
@@ -92,7 +93,7 @@ module "eks_cluster" {
   eks_ec2_cluster_subnets_ids = module.eks_vpc[0].private_subnets_id_eks_enabled
   eks_cluster_subnets_ids     = module.eks_vpc[0].private_subnets_id
   roles_with_access           = ["arn:aws:iam::640168443445:user/aws-cli"] # Role use by aks-cli. So I can access the cluster using kubectl
-  # eks_addons              = ["kube-proxy", "vpc-cni"]
+  eks_addons                  = ["coredns"]
 }
 
 module "gke_cluster" {

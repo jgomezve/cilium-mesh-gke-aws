@@ -48,7 +48,8 @@ resource "aws_subnet" "public_subnet" {
   availability_zone = each.value.az
 
   tags = {
-    Name = "${var.name}-public-${each.value.cidr}"
+    Name                     = "${var.name}-public-${each.value.cidr}"
+    "kubernetes.io/role/elb" = each.value.eks_enabled ? 1 : 0 # Required by the AWS Load Balancer Controller
   }
 }
 

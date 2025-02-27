@@ -55,7 +55,7 @@ module "aws_vpc" {
 | <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | VPC's CIDR | `string` | n/a | yes |
 | <a name="input_enable_dns_hostnames"></a> [enable\_dns\_hostnames](#input\_enable\_dns\_hostnames) | Enable DNS hostname on VPC | `bool` | `true` | no |
 | <a name="input_private_subnets"></a> [private\_subnets](#input\_private\_subnets) | List of VPC's private subnets | <pre>list(object({<br>    cidr        = string<br>    az          = string<br>    eks_enabled = optional(bool, true)<br>  }))</pre> | n/a | yes |
-| <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | List of VPC's public subnets | <pre>list(object({<br>    cidr = string<br>    az   = string<br>  }))</pre> | n/a | yes |
+| <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | List of VPC's public subnets | <pre>list(object({<br>    cidr        = string<br>    az          = string<br>    eks_enabled = optional(bool, true)<br>  }))</pre> | n/a | yes |
 | <a name="input_internet_access"></a> [internet\_access](#input\_internet\_access) | Flag to enable egress Internet access on private & public subnets | `bool` | `true` | no |
 
 ## Outputs

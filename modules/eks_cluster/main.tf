@@ -114,11 +114,11 @@ resource "aws_eks_node_group" "node_group" {
     version = aws_launch_template.aws_launch_template.latest_version
   }
 
-  taint {
-    key    = "node.cilium.io/agent-not-ready"
-    value  = "true"
-    effect = "NO_EXECUTE"
-  }
+  # taint {
+  #   key    = "node.cilium.io/agent-not-ready"
+  #   value  = "true"
+  #   effect = "NO_EXECUTE"
+  # }
 
   # remote_access {
   #   ec2_ssh_key = var.ssh_keys_name

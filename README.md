@@ -29,6 +29,9 @@ Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected ov
 
 * Delete Kube-Proxy DaemonSet (Kube-Proxy replacement is required for Cilium GW API)
 
+        kubectl delete ds/kube-proxy -n kube-system
+
+* Install Gateway API CRDs (See Section)
 
 
 * Install Cilium on EKS
@@ -40,6 +43,10 @@ Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected ov
         helm repo add eks https://aws.github.io/eks-charts
         helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-cilium --set hostNetwork=true --set replicaCount=1
 
+* Set right Python Installation (Optional MacOs)
+
+        export CLOUDSDK_PYTHON=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11
+
 * Get Kubeconfig from GKE
 
         gcloud container clusters get-credentials gke-cilium --zone us-central1-a --project gke-cilium-443902
@@ -48,6 +55,21 @@ Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected ov
 * Install Cilium on GKE
 
         cilium install  --datapath-mode vxlan --set encapsulation.enabled=true  --set encapsulation.type=vxlan --set cluster.id=2   --set cluster.name=gke-cilium   --set eni.enabled=false  --set ipam.mode=cluster-pool   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.111.0.0/16   --set ipam.operator.clusterPoolIPv4MaskSize=24
+
+* Rename Kubernetes Contexts
+
+        kubectl config rename-context <> eks
+        kubectl config rename-context <> gke
+
+* Install Application on GKE
+
+        kubectl apply -f manifests/bookstore/app_eks.yaml --context eks
+        kubectl apply -f manifests/bookstore/app_gke.yaml --context gke
+        kubectl apply -f manifests/bookstore/gateway_api.yaml --context eks
+
+* Make Load Balancer Internet Facing
+        
+        kubectl edit svc cilium-gateway-bookinfo-gateway
 
 * Enable Cluster Mesh
 
@@ -58,9 +80,31 @@ Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected ov
 
         cilium clustermesh connect --context eks --destination-context gke
 
+* Scale down Reviews replicas in EKS
+
+        kubectl scale deployment reviews-amazon-aws --replicas=0 --context eks
+
 
 # Troubleshoot Cluster-Mesh
 
+        kubectl --context eks  -n kube-system exec ds/cilium -- cilium-health status
+        kubectl --context eks exec -n kube-system -ti ds/cilium -- cilium-dbg status --all-clusters
+        kubectl --context eks exec -it  -n kube-system -ti ds/cilium -- cilium service list
 
-# TearDown
+# Install Gateway API
+
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
+
+
+# Tear Down
+
+        cilium clustermesh disable --context eks
+        cilium clustermesh disable --context gke
+        kubectl delete -f manifests/bookstore/gateway_api.yaml --context eks
+
 

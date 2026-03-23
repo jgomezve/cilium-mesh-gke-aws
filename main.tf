@@ -3,10 +3,12 @@ provider "aws" {
 }
 
 provider "google" {
-  project = "gke-cilium-443902"
+  project = "cilium-mesh-489420"
   region  = "us-central1"
   zone    = "us-central1-a"
 }
+
+#TODO: Sett TF provider Versions
 
 module "eks_vpc" {
   count    = var.aws_network ? 1 : 0
@@ -88,16 +90,16 @@ module "eks_cluster" {
   count                       = var.eks_cluster && var.aws_network ? 1 : 0
   source                      = "./modules/eks_cluster"
   name                        = "eks-cilium"
-  ssh_keys_name               = "my-demo-key"
+  # ssh_keys_name               = "my-demo-key"
   eks_vpc_id                  = module.eks_vpc[0].vpc_id
   eks_ec2_cluster_subnets_ids = module.eks_vpc[0].private_subnets_id_eks_enabled
   eks_cluster_subnets_ids     = module.eks_vpc[0].private_subnets_id
-  roles_with_access           = ["arn:aws:iam::640168443445:user/aws-cli"] # Role use by aks-cli. So I can access the cluster using kubectl
+  roles_with_access           = ["arn:aws:iam::063089649137:user/jgomezve"] # Role use by aks-cli. So I can access the cluster using kubectl
   eks_addons                  = ["coredns"]
 }
 
 module "gke_cluster" {
-  count         = var.gke_cluster && var.aws_network ? 1 : 0
+  count         = var.gke_cluster && var.gcp_network ? 1 : 0
   source        = "./modules/gke_cluster"
   name          = "gke-cilium"
   pod_cidr      = "10.111.0.0/16"

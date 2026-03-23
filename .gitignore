@@ -4,3 +4,4 @@
 *.terraform.lock.hcl
 *.terraform.tfstate.lock.info
 *.pem
+.env

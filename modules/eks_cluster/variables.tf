@@ -72,6 +72,7 @@ variable "desired_nodes" {
 variable "ssh_keys_name" {
   description = "Name of SSH keas for the worker nodes"
   type        = string
+  default    = null
 }
 
 variable "instance_types" {

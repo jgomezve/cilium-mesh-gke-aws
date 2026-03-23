@@ -30,8 +30,8 @@ module "aws_gcp_vpn" {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_google"></a> [google](#provider\_google) | >= 6.14.1 |
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.82.2 |
+| <a name="provider_google"></a> [google](#provider\_google) | >= 6.14.1 |
 
 ## Inputs
 
@@ -44,7 +44,7 @@ module "aws_gcp_vpn" {
 | <a name="input_aws_route_tables_ids"></a> [aws\_route\_tables\_ids](#input\_aws\_route\_tables\_ids) | AWS Route Table Ids | `list(string)` | n/a | yes |
 | <a name="input_bgp_asn"></a> [bgp\_asn](#input\_bgp\_asn) | AWS BGP ASN | `number` | `6500` | no |
 | <a name="input_ike_version"></a> [ike\_version](#input\_ike\_version) | IKE version for Tunnel. Either `1` or `2` | `number` | `1` | no |
-| <a name="input_gcp_forwarding_rules"></a> [gcp\_forwarding\_rules](#input\_gcp\_forwarding\_rules) | Forwarding rules tunnel GCP | <pre>list(object({<br>    protocol = string<br>    port     = optional(string, "")<br>  }))</pre> | <pre>[<br>  {<br>    "protocol": "ESP"<br>  },<br>  {<br>    "port": "4500",<br>    "protocol": "UDP"<br>  },<br>  {<br>    "port": "500",<br>    "protocol": "UDP"<br>  }<br>]</pre> | no |
+| <a name="input_gcp_forwarding_rules"></a> [gcp\_forwarding\_rules](#input\_gcp\_forwarding\_rules) | Forwarding rules tunnel GCP | <pre>list(object({<br/>    protocol = string<br/>    port     = optional(string, "")<br/>  }))</pre> | <pre>[<br/>  {<br/>    "protocol": "ESP"<br/>  },<br/>  {<br/>    "port": "4500",<br/>    "protocol": "UDP"<br/>  },<br/>  {<br/>    "port": "500",<br/>    "protocol": "UDP"<br/>  }<br/>]</pre> | no |
 | <a name="input_cidr_gcp"></a> [cidr\_gcp](#input\_cidr\_gcp) | CIDR on GCP | `string` | n/a | yes |
 | <a name="input_cidr_aws"></a> [cidr\_aws](#input\_cidr\_aws) | CIDR on AWS | `string` | n/a | yes |
 

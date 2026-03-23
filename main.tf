@@ -87,9 +87,9 @@ module "gcp_vm_tshoot" {
 }
 
 module "eks_cluster" {
-  count                       = var.eks_cluster && var.aws_network ? 1 : 0
-  source                      = "./modules/eks_cluster"
-  name                        = "eks-cilium"
+  count  = var.eks_cluster && var.aws_network ? 1 : 0
+  source = "./modules/eks_cluster"
+  name   = "eks-cilium"
   # ssh_keys_name               = "my-demo-key"
   eks_vpc_id                  = module.eks_vpc[0].vpc_id
   eks_ec2_cluster_subnets_ids = module.eks_vpc[0].private_subnets_id_eks_enabled

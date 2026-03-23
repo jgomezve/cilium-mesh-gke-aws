@@ -1,147 +1,214 @@
 # Cilium Cluster Mesh Sandbox
 
-## Structure
+This sandbox deploys a [Cilium Cluster Mesh](https://docs.cilium.io/en/stable/network/clustermesh/clustermesh/) across an AWS EKS cluster and a GCP GKE cluster, connected via a site-to-site VPN. The infrastructure is fully managed with Terraform.
 
-* Pre-requisites
-* Terraform
-* Cloud Networking validation
-* Cilium installation on EKS & GKE
-* Application Deployment
-* Cilium Cluster Mesh
+---
 
+## Table of Contents
 
-## Pre-requisites
+1. [Pre-requisites](#1-pre-requisites)
+2. [Project Structure](#2-project-structure)
+3. [Considerations for AWS and GCP](#3-considerations-for-aws-and-gcp)
+4. [Setting Values in Terraform](#4-setting-values-in-terraform)
+5. [Cloud Networking](#5-cloud-networking)
+6. [Blog Post](#6-blog-post)
+7. [Teardown](#7-teardown)
+8. [Working with kubectl](#8-working-with-kubectl)
 
-* aws cli
-* gcloud cli
-* gke-gcloud-auth-plugin
+---
 
-Terraform project to deploy Kubernetes clusters on AWS and GCP interconnected over a Site-to-Site VPN. The projects does not use best-practices to deploy cloud infrastructure on the Cloud. The goal is to deploy de underlay required to connect EKA and GKE cluster with Cilium using Cilium Mesh.
+## 1. Pre-requisites
 
-## Useful commands
+Install the following tools before deploying:
 
-* Get Kubeconfig contexts
+| Tool | Purpose | Install |
+|------|---------|---------|
+| `aws` CLI | Interact with AWS resources | [docs.aws.amazon.com](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
+| `gcloud` CLI | Interact with GCP resources | [cloud.google.com/sdk](https://cloud.google.com/sdk/docs/install) |
+| `gke-gcloud-auth-plugin` | Authenticate kubectl against GKE | [cloud.google.com/blog](https://cloud.google.com/blog/products/containers-kubernetes/kubectl-auth-changes-in-gke) |
+| `kubectl` | Manage Kubernetes clusters | [kubernetes.io](https://kubernetes.io/docs/tasks/tools/) |
+| `helm` | Deploy Kubernetes applications | [helm.sh](https://helm.sh/docs/intro/install/) |
+| `cilium` CLI | Install and manage Cilium | [docs.cilium.io](https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/#install-the-cilium-cli) |
+| `terraform` | Provision cloud infrastructure | [developer.hashicorp.com](https://developer.hashicorp.com/terraform/install) |
 
-        kubectl config get-contexts
+---
 
-* Rename a Kubeconfig context
+## 2. Project Structure
 
-        kubectl config rename-context <old_context_name> <new_context_name>
+```
+.
+├── main.tf                    # Root module – wires all child modules together
+├── variables.tf               # Input variable declarations
+├── variables.auto.tfvars      # Variable values (customise here)
+├── manifests/
+│   └──   bookstore/             # Demo bookstore application manifests
+└── modules/
+    ├── aws_network/           # AWS VPC, subnets, route tables
+    ├── aws_vm/                # EC2 troubleshooting VM
+    ├── aws_gcp_vpn/           # Site-to-site VPN between AWS and GCP
+    ├── eks_cluster/           # EKS cluster with managed node group
+    ├── gcp_network/           # GCP VPC and subnets
+    ├── gcp_vm/                # GCE troubleshooting VM
+    └── gke_cluster/           # GKE cluster (zonal, Dataplane V2 / Cilium)
+```
 
-* Set default context
+---
 
-        kubectl config use-context <context_name>
+## 3. Considerations for AWS and GCP
 
-* Delete a Kubeconfig context
+### Network design
 
-        kubectl config delete-context <context_name>
+The two clouds are connected over a **site-to-site IPsec VPN** (AWS Virtual Private Gateway ↔ GCP Classic VPN). Traffic between clusters flows through the VPN tunnel, so pod-to-pod cross-cloud latency depends on the chosen regions.
 
-## Instructions
+```
+┌────────────────────────────────────────────┐  IPsec VPN  ┌────────────────────────────────────────────┐
+│                   AWS                      │ ◄─────────► │                   GCP                      │
+│                                            │             │                                            │
+│  VPC: 192.168.0.0/16                       │             │  VPC (node subnet): 172.25.1.0/24          │
+│  ┌──────────────────────────────────────┐  │             │  ┌──────────────────────────────────────┐  │
+│  │  EKS cluster                         │  │             │  │  GKE cluster                         │  │
+│  │  Pods: 10.222.0.0/16 (set by Cilium) │  │  Cilium     │  │  Pods: 10.111.0.0/16 (alias range)   │  │
+│  │  ← overlay CNI, NOT in VPN route     │  │ ~~tunnel~~► │  │  ← secondary CIDR, NOT in VPN route  │  │
+│  └──────────────────────────────────────┘  │             │  └──────────────────────────────────────┘  │
+└────────────────────────────────────────────┘             └────────────────────────────────────────────┘
+```
 
-* Get Kubeconfig from EKS
+### AWS — key decisions
 
-        aws eks update-kubeconfig --region us-east-1 --name eks-cilium 
-
-
-* Delete Kube-Proxy DaemonSet (Kube-Proxy replacement is required for Cilium GW API)
-
-        kubectl delete ds/kube-proxy -n kube-system
-
-* Install Gateway API CRDs (See Section)
-
-
-* Install Cilium on EKS
-
-        cilium install --version 1.18.5 --set gatewayAPI.enabled=true --set kubeProxyReplacement=true --datapath-mode vxlan   --set cluster.id=1   --set cluster.name=eks-cilium   --set eni.enabled=false   --set encapsulation.enabled=true  --set encapsulation.type=vxlan --set ipam.mode=cluster-pool   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.222.0.0/16   --set ipam.operator.clusterPoolIPv4MaskSize=24
-
-* Install AWS Load Balancer Controller
-
-        helm repo add eks https://aws.github.io/eks-charts
-        helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-cilium --set hostNetwork=true --set replicaCount=1
-
-* Set right Python Installation (Optional MacOs)
-
-        export CLOUDSDK_PYTHON=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11
-
-* Get Kubeconfig from GKE
-
-        gcloud container clusters get-credentials gke-cilium --zone us-central1-a --project cilium-mesh-489420
-
-
-* Install Cilium on GKE
-
-        cilium install  --version 1.18.5 --datapath-mode vxlan --set encapsulation.enabled=true  --set encapsulation.type=vxlan --set cluster.id=2   --set cluster.name=gke-cilium   --set eni.enabled=false  --set ipam.mode=cluster-pool   --set ipam.operator.clusterPoolIPv4PodCIDRList=10.111.0.0/16   --set ipam.operator.clusterPoolIPv4MaskSize=24
-
-* Rename Kubernetes Contexts
-
-        kubectl config rename-context <> eks
-        kubectl config rename-context <> gke
-
-* Install Application on GKE
-
-        kubectl apply -f manifests/bookstore/app_eks.yaml --context eks
-        kubectl apply -f manifests/bookstore/app_gke.yaml --context gke
-        kubectl apply -f manifests/bookstore/gateway_api.yaml --context eks
-
-* Make Load Balancer Internet Facing
-        
-        kubectl edit svc cilium-gateway-bookinfo-gateway --context eks
-        
-        service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
-
-* Enable Cluster Mesh
-
-        cilium clustermesh enable --context eks --service-type LoadBalancer
-        cilium clustermesh enable --context gke --service-type LoadBalancer
-
-# To Check
-
-        kubectl annotate service clustermesh-apiserver -n kube-system \
-        cloud.google.com/load-balancer-type="Internal" --overwrite
-
-* Connect clusters
-
-        cilium clustermesh connect --context eks --destination-context gke
-
-* Scale down Reviews replicas in EKS
+- **VPC CIDR** (`192.168.0.0/16`) must not overlap with the GCP node subnet or GKE pod CIDR.
+- **Public subnets** are tagged for the AWS Load Balancer Controller so that internet-facing `LoadBalancer` services are placed there automatically.
+- **Private subnets** host EKS worker nodes. Only subnets with `eks_enabled = true` are registered as cluster subnets in the EKS API.
+- **Two Availability Zones** are used to satisfy EKS's minimum AZ requirement for a highly-available control plane.
+- The **AWS Virtual Private Gateway** attaches to the VPC and BGP is not used — static routes propagate only the GCP **node** CIDR (`172.25.1.0/24`) into the private route tables.
+- An optional **EC2 troubleshooting VM** is placed in a private subnet for reachability testing across the VPN.
 
 
-        kubectl patch service reviews --context eks \
-        -p '{"metadata":{"annotations":{"service.cilium.io/global":"true"}}}'
+### GCP — key decisions
 
-        kubectl patch service reviews --context gke \
-        -p '{"metadata":{"annotations":{"service.cilium.io/global":"true"}}}'
+- **GKE** is deployed as a **zonal cluster** (single zone) to minimise cost in a sandbox environment.
+- **Dataplane V2** (eBPF / Cilium) is enabled natively on GKE, which is a requirement for Cilium Cluster Mesh.
+- The **node subnet** (`172.25.1.0/24`) must not overlap with any AWS CIDR. This is the only GCP range added to the VPN static route on the AWS side.
+- The **GKE pod CIDR** (`10.111.0.0/16`) is a secondary alias range — it is **not** routed over the VPN. Cross-cloud pod traffic relies entirely on Cilium Cluster Mesh tunnelling.
+- The **Classic VPN gateway** creates two redundant tunnels toward AWS for resilience.
+- An optional **GCE troubleshooting VM** mirrors the EC2 VM on the AWS side.
 
-        kubectl scale deployment reviews-amazon-aws --replicas=0 --context eks
+---
 
+## 4. Setting Values in Terraform
 
-# Troubleshoot Cluster-Mesh
+All tuneable parameters are exposed as Terraform variables. Edit **`variables.auto.tfvars`** to customise a deployment — no changes to `main.tf` are needed.
 
-        kubectl --context eks  -n kube-system exec ds/cilium -- cilium-health status
-        kubectl --context eks exec -n kube-system -ti ds/cilium -- cilium-dbg status --all-clusters
-        kubectl --context eks exec -it  -n kube-system -ti ds/cilium -- cilium service list
+### Feature flags
 
-# Install Gateway API
+Control which components are deployed:
 
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `aws_network` | `bool` | `false` | Deploy the AWS VPC and subnets |
+| `gcp_network` | `bool` | `false` | Deploy the GCP VPC and subnet |
+| `aws_gcp_vpn` | `bool` | `false` | Deploy the site-to-site VPN (requires both networks) |
+| `eks_cluster` | `bool` | `false` | Deploy the EKS cluster |
+| `gke_cluster` | `bool` | `false` | Deploy the GKE cluster |
+| `tshoot_vms` | `bool` | `false` | Deploy EC2 and GCE troubleshooting VMs |
 
+### AWS variables
 
-# Tear Down
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `aws_region` | `string` | `us-east-1` | AWS region for all resources |
+| `aws_vpc_cidr` | `string` | `192.168.0.0/16` | CIDR block for the AWS VPC |
+| `aws_public_subnets` | `list(object)` | see below | Public subnets — each entry has `cidr`, `az`, and optional `eks_enabled` |
+| `aws_private_subnets` | `list(object)` | see below | Private subnets — each entry has `cidr`, `az`, and optional `eks_enabled` |
+| `ec2_ssh_key_name` | `string` | `my-demo-key` | Name of an existing EC2 Key Pair for the troubleshooting VM |
+| `eks_roles_with_access` | `list(string)` | — | IAM role/user ARNs granted `kubectl` access to the EKS cluster. **Must be set via `TF_VAR_eks_roles_with_access` env var** — never commit to tfvars |
 
-        cilium clustermesh disable --context eks
-        cilium clustermesh disable --context gke
-        kubectl delete -f manifests/bookstore/gateway_api.yaml --context eks
+### GCP variables
 
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `gcp_region` | `string` | `us-central1` | GCP region for all resources |
+| `gcp_zone` | `string` | `us-central1-a` | GCP zone for zonal resources (GKE cluster, troubleshooting VM) |
+| `gcp_vpc_cidr` | `string` | `172.25.1.0/24` | CIDR block for the GCP VPC private subnet |
+| `gke_pod_cidr` | `string` | `10.111.0.0/16` | Secondary CIDR assigned to GKE pods |
 
+### Example `variables.auto.tfvars`
 
-# Cloud networking
+```hcl
+# Feature flags
+aws_network = true
+gcp_network = true
+aws_gcp_vpn = true
+eks_cluster = true
+gke_cluster = true
+tshoot_vms  = false
 
-## AWS
+# AWS
+aws_region   = "us-east-1"
+aws_vpc_cidr = "192.168.0.0/16"
+
+aws_public_subnets = [
+  { cidr = "192.168.91.0/24", az = "us-east-1a" },
+  { cidr = "192.168.92.0/24", az = "us-east-1b", eks_enabled = false }
+]
+
+aws_private_subnets = [
+  { cidr = "192.168.1.0/24", az = "us-east-1a" },
+  { cidr = "192.168.2.0/24", az = "us-east-1b", eks_enabled = false }
+]
+
+ec2_ssh_key_name = "my-demo-key"
+
+# eks_roles_with_access is intentionally omitted — set via environment variable (see below)
+
+# GCP
+gcp_region   = "us-central1"
+gcp_zone     = "us-central1-a"
+gcp_vpc_cidr = "172.25.1.0/24"
+gke_pod_cidr = "10.111.0.0/16"
+```
+
+> **CIDR overlap rules:**
+> `aws_vpc_cidr`, `gcp_vpc_cidr`, and `gke_pod_cidr` must be three non-overlapping ranges.
+
+### Sensitive variables
+
+`eks_roles_with_access` contains IAM ARNs that identify who can access your cluster. It must **not** be committed to the repository. Supply it at runtime via a `TF_VAR_*` environment variable — Terraform automatically maps any `TF_VAR_<name>` env var to the corresponding input variable.
+
+For a `list(string)` variable the value must be a JSON array:
+
+```bash
+export TF_VAR_eks_roles_with_access='["arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>"]'
+```
+
+Multiple principals:
+
+```bash
+export TF_VAR_eks_roles_with_access='["arn:aws:iam::<ACCOUNT_ID>:user/<USERNAME>","arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>"]'
+```
+
+> Store this `export` in your shell profile (e.g. `~/.zshrc`) or a local `.env` file that is listed in `.gitignore`. Never put it in `variables.auto.tfvars`.
+
+### Deploying
+
+```bash
+# 1. Set the sensitive variable
+export TF_VAR_eks_roles_with_access='["arn:aws:iam::<ACCOUNT_ID>:user/<USERNAME>"]'
+
+# 2. Deploy
+terraform init
+terraform plan
+terraform apply
+```
+
+---
+
+## 5. Cloud Networking
+
+Use the commands below to verify that all networking layers (VPC, VPN, routing, compute) are correctly provisioned and reachable.
+
+### AWS
+
+**List VPC subnets**
 
 ```bash
 aws ec2 describe-subnets \
@@ -166,6 +233,8 @@ aws ec2 describe-subnets \
 |  192.168.92.0/24|  eks-cilium-public-192.168.92.0/24  |  vpc-02e4d622a5eb579a9  |
 +-----------------+-------------------------------------+-------------------------+
 ```
+
+**Check VPN connection status and static routes**
 
 ```bash
 aws ec2 describe-vpn-connections \
@@ -192,6 +261,10 @@ aws ec2 describe-vpn-connections \
 |+---------------------------------------------------------------------------+|
 ```
 
+> The static route `172.25.1.0/24` must appear here for GCP-bound traffic to be routed through the VPN.
+
+**List EKS worker nodes (EC2 instances)**
+
 ```bash
 aws ec2 describe-instances \
     --query 'Reservations[*].Instances[*].{
@@ -215,7 +288,35 @@ aws ec2 describe-instances \
 +---------------------+-------+----------------+----------+----------------------------+-------------------------+
 ```
 
-## GCP
+> This lists the EC2 instances backing the EKS node group. Their private IPs are drawn from the VPC subnet (`192.168.1.0/24`) and are directly routable over the VPN toward GCP.
+
+**Check AWS Load Balancer (Cluster Mesh / Gateway API)**
+
+```bash
+aws elbv2 describe-load-balancers \
+    --query 'LoadBalancers[*].{Name:LoadBalancerName, State:State.Code, Scheme:Scheme, Subnets:AvailabilityZones[*].SubnetId}' \
+    --output table
+```
+
+```console
+------------------------------------------------------------------
+|                      DescribeLoadBalancers                     |
++----------------------------------+-------------------+---------+
+|               Name               |      Scheme       |  State  |
++----------------------------------+-------------------+---------+
+|  k8s-default-ciliumga-302d831e91 |  internet-facing  |  active |
++----------------------------------+-------------------+---------+
+||                            Subnets                           ||
+|+--------------------------------------------------------------+|
+||  subnet-0805fe839c8e0cb5d                                    ||
+|+--------------------------------------------------------------+|
+```
+
+---
+
+### GCP
+
+**List GKE VPC subnets**
 
 ```bash
 gcloud compute networks subnets list \
@@ -233,6 +334,8 @@ CIDR           SUBNET                        VPC_NAME    PRIVATE_G_ACCESS
 172.25.1.0/24  gke-cilium--172--25--1--0-24  gke-cilium  True
 ```
 
+**Check VPN tunnel status**
+
 ```bash
 gcloud compute vpn-tunnels list \
     --format="table(
@@ -249,6 +352,10 @@ NAME     REGION       GATEWAY  PEER_ADDRESS   STATUS
 tunnel1  us-central1           50.17.168.138  ESTABLISHED
 tunnel2  us-central1           52.44.91.191   ESTABLISHED
 ```
+
+> Both tunnels should show `ESTABLISHED`. A `WAITING_FOR_FULL_CONFIG` or `FAILED` status usually means the AWS VPN has not yet come up or the pre-shared keys do not match.
+
+**Verify static routes toward AWS**
 
 ```bash
 gcloud compute routes list \
@@ -268,38 +375,72 @@ route-cilium-1  gke-cilium  192.168.0.0/16    tunnel1     1000
 route-cilium-2  gke-cilium  192.168.0.0/16    tunnel2     1000
 ```
 
+> Two routes covering `192.168.0.0/16` (the AWS VPC CIDR) via each tunnel provide redundancy.
+
+**List GKE nodes and pod ranges**
+
 ```bash
 gcloud compute instances list \
-    --format="table(           
-        name,                                    
+    --format="table(
+        name,
         networkInterfaces[0].networkIP:label=NODE_IP,
         networkInterfaces[0].subnetwork.basename():label=SUBNET,
         networkInterfaces[0].aliasIpRanges[0].ipCidrRange:label=POD_RANGE
-    )"   
-```            
+    )"
+```
+
 ```console
 NAME                                           NODE_IP     SUBNET                        POD_RANGE
 gke-gke-cilium-gke-cilium-nodes-b5b3d145-hr3k  172.25.1.4  gke-cilium--172--25--1--0-24
 ```
 
+---
+
+## 6. Blog Post
+
+A detailed write-up of this sandbox — covering the  Cilium Cluster Mesh setup, and the cross-cloud networking deep-dive — is being published on Medium:
+
+
+## 7. Teardown
+
+Disable Cilium Cluster Mesh on both clusters before destroying infrastructure to avoid stale state:
+
 ```bash
-cilium-mesh-gke-aws % aws elbv2 describe-load-balancers \
-    --query 'LoadBalancers[*].{Name:LoadBalancerName, State:State.Code, Scheme:Scheme, Subnets:AvailabilityZones[*].SubnetId}' \
-    --output table
+cilium clustermesh disable --context eks
+cilium clustermesh disable --context gke
+kubectl delete -f manifests/bookstore/gateway_api.yaml --context eks
 ```
 
+Then destroy all Terraform-managed resources:
 
+```bash
+terraform destroy
+```
 
-```console
-------------------------------------------------------------------
-|                      DescribeLoadBalancers                     |
-+----------------------------------+-------------------+---------+
-|               Name               |      Scheme       |  State  |
-+----------------------------------+-------------------+---------+
-|  k8s-default-ciliumga-302d831e91 |  internet-facing  |  active |
-+----------------------------------+-------------------+---------+
-||                            Subnets                           ||
-|+--------------------------------------------------------------+|
-||  subnet-0805fe839c8e0cb5d                                    ||
-|+--------------------------------------------------------------+|
+---
+
+## 8. Working with kubectl
+
+**Get kubeconfig contexts**
+
+```bash
+kubectl config get-contexts
+```
+
+**Rename a kubeconfig context**
+
+```bash
+kubectl config rename-context <old_context_name> <new_context_name>
+```
+
+**Set the default context**
+
+```bash
+kubectl config use-context <context_name>
+```
+
+**Delete a kubeconfig context**
+
+```bash
+kubectl config delete-context <context_name>
 ```
